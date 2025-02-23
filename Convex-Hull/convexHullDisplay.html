@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convex Hull Graph</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin-top: 20px;
+        }
+        .label {
+            position: absolute;
+            font-size: 12px;
+            color: red;
+            pointer-events: none; 
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Convex Hull Graph</h1>
+
+    <canvas id="convexHullCanvas" width="800" height="600"></canvas>
+
+    <script>
+        // all the points from the C input
+        const points = [
+            { x: 134, y: -57 }, { x: -62, y: 83 }, { x: 49, y: 112 }, { x: -145, y: -189 }, { x: 123, y: -112 }, { x: 13, y: -47 },
+            { x: -91, y: 54 }, { x: -63, y: -141 }, { x: 187, y: 92 }, { x: -38, y: 68 }, { x: 56, y: -85 }, { x: -74, y: -16 },
+            { x: 98, y: -177 }, { x: -131, y: 141 }, { x: 161, y: -66 }, { x: -80, y: 93 }, { x: -29, y: 21 }, { x: 12, y: 138 },
+            { x: -65, y: -34 }, { x: 102, y: 154 }, { x: 65, y: -53 }, { x: -132, y: -123 }, { x: 23, y: 74 }, { x: 108, y: 95 },
+            { x: -46, y: -87 }, { x: 174, y: -60 }, { x: 40, y: 20 }, { x: 89, y: 110 }, { x: -158, y: 21 }, { x: 133, y: -9 },
+            { x: -93, y: 141 }, { x: 105, y: 51 }, { x: -108, y: 79 }, { x: 77, y: 3 }, { x: -29, y: -33 }, { x: 101, y: -22 },
+            { x: -153, y: -101 }, { x: 60, y: 146 }, { x: -29, y: 153 }, { x: -182, y: 45 }, { x: 113, y: -33 }, { x: -57, y: -24 },
+            { x: 169, y: 52 }, { x: 39, y: 90 }, { x: -104, y: 62 }, { x: 76, y: 118 }, { x: -98, y: -155 }, { x: 42, y: -68 },
+            { x: -153, y: 30 }, { x: 125, y: -129 }, { x: 160, y: -72 }, { x: 85, y: 150 }, { x: -23, y: -80 }, { x: -101, y: 112 },
+            { x: 122, y: -15 }, { x: 67, y: -103 }, { x: -118, y: 116 }, { x: 140, y: 36 }, { x: -144, y: 17 }, { x: 17, y: -53 },
+            { x: 94, y: -60 }, { x: -49, y: 127 }, { x: 157, y: 87 }, { x: 103, y: 144 }, { x: 179, y: 51 }, { x: -80, y: -135 },
+            { x: 67, y: -12 }, { x: -11, y: 8 }, { x: 135, y: 72 }, { x: 91, y: 11 }, { x: -115, y: -82 }, { x: -131, y: 142 },
+            { x: 132, y: -98 }, { x: -60, y: 39 }, { x: 33, y: -45 }, { x: -177, y: -61 }, { x: 56, y: 55 }, { x: 123, y: 32 }
+        ];
+
+
+        // all the convex hull points
+        const convexHullPoints = [
+            { x: -182, y: 45 },
+            { x: -177, y: -61 },
+            { x: -145, y: -189 },
+            { x: 98, y: -177 },
+            { x: 174, y: -60 },
+            { x: 187, y: 92 },
+            { x: 102, y: 154 },
+            { x: -29, y: 153 },
+            { x: -131, y: 142 }
+        ];
+
+        const canvas = document.getElementById("convexHullCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // centers the graph
+        const offsetX = 400; 
+        const offsetY = 300; 
+        const scale = 1; 
+
+        // creates the dots representing points
+        function drawPoint(x, y, color = 'black') {
+            ctx.beginPath();
+            ctx.arc(x + offsetX, -y + offsetY, 5, 0, 2 * Math.PI);  
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+
+        // draw line between two points
+        function drawLine(x1, y1, x2, y2, color = 'blue') {
+            ctx.beginPath();
+            ctx.moveTo(x1 + offsetX, -y1 + offsetY);
+            ctx.lineTo(x2 + offsetX, -y2 + offsetY);
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        }
+
+        // draw axis
+        function drawAxes() {
+            // X
+            ctx.beginPath();
+            ctx.moveTo(0, offsetY);
+            ctx.lineTo(canvas.width, offsetY);
+            ctx.strokeStyle = 'gray';
+            ctx.stroke();
+
+            // Y
+            ctx.beginPath();
+            ctx.moveTo(offsetX, 0);
+            ctx.lineTo(offsetX, canvas.height);
+            ctx.strokeStyle = 'gray';
+            ctx.stroke();
+        }
+
+        // draws the label with an offset 
+        function drawLabel(x, y, label) {
+            const labelX = x + 500;
+            const labelY = -y + 380;
+            const labelElement = document.createElement("div");
+            labelElement.classList.add("label");
+            labelElement.style.left = `${labelX}px`;  
+            labelElement.style.top = `${labelY}px`;  
+            labelElement.textContent = label;
+            document.body.appendChild(labelElement);
+        }
+
+        drawAxes();
+
+        // draw points
+        points.forEach(point => {
+            drawPoint(point.x, point.y);
+        });
+
+        // draw the output points 
+        convexHullPoints.forEach(point => {
+            drawPoint(point.x, point.y, 'red');
+            drawLabel(point.x, point.y, `(${point.x}, ${point.y})`);
+        });
+
+        // drawlines between convex hull points
+        for (let i = 0; i < convexHullPoints.length - 1; i++) {
+            drawLine(convexHullPoints[i].x, convexHullPoints[i].y, convexHullPoints[i + 1].x, convexHullPoints[i + 1].y);
+        }
+
+        // connect up last line to start
+        drawLine(convexHullPoints[convexHullPoints.length - 1].x, convexHullPoints[convexHullPoints.length - 1].y, convexHullPoints[0].x, convexHullPoints[0].y);
+
+    </script>
+</body>
+</html>
