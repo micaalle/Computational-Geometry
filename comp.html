@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>World Map Random Points & Computational Geometry</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.0/mapbox-gl.css" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+        }
+        #map {
+            height: 100vh;
+        }
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .button, .slider, select {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="generatePointsBtn" class="button">Generate Random Points</button>
+        <input type="range" id="pointSlider" class="slider" min="1" max="50" value="10">
+        <label for="pointSlider">Number of Points: <span id="pointCount">10</span></label>
+        <select id="algorithmSelect" class="select">
+            <option value="convexHull">Convex Hull</option>
+            <option value="tsp">Traveling Salesman</option>
+        </select>
+        <button id="runAlgorithmBtn" class="button">Run Algorithm</button>
+        <label for="speedSlider">Animation Speed: <span id="speedValue">500</span> ms</label>
+        <input type="range" id="speedSlider" class="slider" min="100" max="2000" value="500">
+    </div>
+    <div id="map"></div>
+
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.0/mapbox-gl.js"></script>
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoibWljYWFsbGUiLCJhIjoiY203dHAwM2N1MXdpbjJsb240djF3cWVnMCJ9.lIqkPrRisBYi0eR9iBjMOQ';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v10',
+            center: [0, 0], 
+            zoom: 2
+        });
+
+        let points = [];
+        let markers = [];
+        let animationInterval; 
+
+  
+        function generateRandomPoints() {
+            // reset
+            points = [];
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            
+
+            if (map.getLayer('hullLayer')) {
+                map.removeLayer('hullLayer');
+                map.removeSource('hull');
+            }
+
+      
+            if (map.getLayer('tspLayer')) {
+                map.removeLayer('tspLayer');
+                map.removeSource('tsp');
+            }
+
+            const numPoints = document.getElementById('pointSlider').value;
+            document.getElementById('pointCount').innerText = numPoints;
+
+     
+            const bounds = map.getBounds();
+            const sw = bounds.getSouthWest();
+            const ne = bounds.getNorthEast();
+
+            for (let i = 0; i < numPoints; i++) {
+                const lat = Math.random() * (ne.lat - sw.lat) + sw.lat;  
+                const lng = Math.random() * (ne.lng - sw.lng) + sw.lng;  
+
+                points.push([lng, lat]);
+
+                const marker = new mapboxgl.Marker()
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+                markers.push(marker);
+            }
+        }
+
+
+        function convexHull(points) {
+            if (points.length < 3) return;
+
+
+            points = points.sort((a, b) => a[0] - b[0]);
+
+ 
+            const lower = [];
+            let step = 0;
+            let drawingLine = [];
+            const allSteps = [];
+
+            for (let i = 0; i < points.length; i++) {
+                while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0) {
+                    lower.pop();
+                }
+                lower.push(points[i]);
+
+ 
+                drawingLine = [...lower];
+                allSteps.push([...drawingLine]);
+            }
+
+
+            const upper = [];
+            for (let i = points.length - 1; i >= 0; i--) {
+                while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0) {
+                    upper.pop();
+                }
+                upper.push(points[i]);
+
+
+                drawingLine = [...upper];
+                allSteps.push([...drawingLine]);
+            }
+
+
+            upper.pop();
+            lower.pop();
+
+
+            const hull = lower.concat(upper);
+
+            animateConvexHull(allSteps, hull);
+        }
+
+        function cross(o, a, b) {
+            return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+        }
+
+
+        function animateConvexHull(allSteps, hull) {
+            let stepIndex = 0;
+            const speed = document.getElementById('speedSlider').value;
+            animationInterval = setInterval(() => {
+                if (stepIndex >= allSteps.length) {
+                    clearInterval(animationInterval);
+                    drawFinalHull(hull);
+                } else {
+                    drawStep(allSteps[stepIndex]);
+                    stepIndex++;
+                }
+            }, speed);  
+        }
+
+       //IDK what this does tbh
+        function drawStep(stepPoints) {
+            // PLACEHOLDER WORKOUT REMOVING OVERLAP
+            if (map.getLayer('tempHullLayer')) {
+                map.removeLayer('tempHullLayer');
+                map.removeSource('tempHull');
+            }
+
+            const coordinates = stepPoints.map(p => p);
+
+            map.addSource('tempHull', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Polygon',
+                        'coordinates': [coordinates]
+                    }
+                }
+            });
+
+            map.addLayer({
+                'id': 'tempHullLayer',
+                'type': 'fill',
+                'source': 'tempHull',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#ff0000',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+
+        // final draw ADJUSTTT
+        function drawFinalHull(hull) {
+            if (map.getLayer('hullLayer')) {
+                map.removeLayer('hullLayer');
+                map.removeSource('hull');
+            }
+
+            const coordinates = hull.map(p => p);
+
+            map.addSource('hull', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Polygon',
+                        'coordinates': [coordinates]
+                    }
+                }
+            });
+
+            map.addLayer({
+                'id': 'hullLayer',
+                'type': 'fill',
+                'source': 'hull',
+                'layout': {},
+                'paint': {
+                    'fill-color': '#ff0000',
+                    'fill-opacity': 0.4
+                }
+            });
+        }
+
+        
+        document.getElementById('generatePointsBtn').addEventListener('click', generateRandomPoints);
+
+        document.getElementById('pointSlider').addEventListener('input', () => {
+            document.getElementById('pointCount').innerText = document.getElementById('pointSlider').value;
+        });
+
+        document.getElementById('runAlgorithmBtn').addEventListener('click', () => {
+            if (points.length > 0) {
+                const selectedAlgorithm = document.getElementById('algorithmSelect').value;
+                if (selectedAlgorithm === 'convexHull') {
+                    convexHull(points);
+                }
+            }
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', () => {
+            const speed = document.getElementById('speedSlider').value;
+            document.getElementById('speedValue').innerText = speed;
+            if (points.length > 0 && map.getLayer('hullLayer')) {
+                
+                if (map.getLayer('hullLayer')) {
+                    clearInterval(animationInterval);
+                    animateConvexHull(allSteps, hull, speed);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
