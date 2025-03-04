@@ -203,6 +203,10 @@
                 map.removeLayer('hullLayer');
                 map.removeSource('hull');
             }
+            if (map.getLayer('tempHullLayer')) {
+                map.removeLayer('tempHullLayer');
+                map.removeSource('tempHull');
+            }
 
             const coordinates = hull.map(p => p);
 
