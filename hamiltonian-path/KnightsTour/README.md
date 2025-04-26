@@ -1,3 +1,5 @@
+## Closed and Open solutions of the Knights Tour Problem
+
 This is a C program that solves the Knight's Tour problem using a backtracking approach. The program finds a solution for the Knight's Tour problem on an 8x8 chessboard where a knight must visit every square exactly once, moving according to the rules of a knight in chess.
 
 ## Problem Overview
